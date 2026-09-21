@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_PASSWORD: inventory
+      POSTGRES_USER: inventory
+    ports:
+      - '5432:5432'
+    volumes:
+      - inventory:/var/lib/postgresql/data
+
+volumes:
+  inventory:
