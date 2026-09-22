@@ -20,4 +20,12 @@ public class ErrorResponse {
                 Instant.now()
         );
     }
+
+    public static ErrorResponse of(ErrorCode errorCode, String message) {
+        return new ErrorResponse(
+                errorCode.name(),
+                message,
+                Instant.now()
+        );
+    }
 }
