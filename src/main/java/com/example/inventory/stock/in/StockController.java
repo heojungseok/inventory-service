@@ -31,6 +31,9 @@ public class StockController {
 
     @PostMapping("/stocks/outbound")
     public StockResponse outboundRequest(@Valid @RequestBody OutboundRequest request) {
-        return stockOutboundUseCase.outbound(request.getSku(), request.getQuantity());
+        return stockOutboundUseCase.outbound(
+                request.getSku(),
+                request.getQuantity()
+        );
     }
 }

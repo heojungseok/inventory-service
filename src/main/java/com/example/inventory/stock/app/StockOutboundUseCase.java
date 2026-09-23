@@ -26,7 +26,7 @@ public class StockOutboundUseCase {
                 .orElseThrow(ProductNotFoundException::new);
 
         Long productId = product.getId();
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new IllegalStateException("재고 행 없음: productId= " + productId));
 
         stock.decrease(quantity);
