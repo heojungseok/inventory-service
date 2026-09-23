@@ -1,10 +1,13 @@
 package com.example.inventory.stock.in;
 
+import com.example.inventory.stock.app.StockHistoryQueryUseCase;
 import com.example.inventory.stock.app.StockInboundUseCase;
 import com.example.inventory.stock.app.StockOutboundUseCase;
 import com.example.inventory.stock.app.StockQueryUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,10 +17,11 @@ public class StockController {
     private final StockQueryUseCase stockQueryUseCase;
     private final StockInboundUseCase stockInboundUseCase;
     private final StockOutboundUseCase stockOutboundUseCase;
+    private final StockHistoryQueryUseCase stockHistoryQueryUseCase;
 
-    @GetMapping("/products/{id}/stock")
-    public StockResponse getStock(@PathVariable Long id) {
-        return stockQueryUseCase.findByProductId(id);
+    @GetMapping("/products/{productId}/stock")
+    public StockResponse getStock(@PathVariable Long productId) {
+        return stockQueryUseCase.findByProductId(productId);
     }
 
     @PostMapping("/stocks/inbound")
@@ -35,5 +39,10 @@ public class StockController {
                 request.getSku(),
                 request.getQuantity()
         );
+    }
+
+    @GetMapping("/products/{productId}/stock/histories")
+    public Page<StockHistoryResponse> getStockHistories(@PathVariable Long productId, Pageable pageable) {
+        return stockHistoryQueryUseCase.findHistories(productId, pageable);
     }
 }

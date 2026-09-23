@@ -1,14 +1,19 @@
 package com.example.inventory.stock;
 
 import com.example.inventory.global.response.ErrorResponse;
+import com.example.inventory.stock.domain.StockHistoryType;
 import com.example.inventory.stock.in.InboundRequest;
 import com.example.inventory.stock.in.OutboundRequest;
+import com.example.inventory.stock.in.StockHistoryResponse;
 import com.example.inventory.stock.in.StockResponse;
 import com.example.inventory.support.IntegrationTest;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -145,5 +150,61 @@ public class StockApiTest extends IntegrationTest {
 
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(entity.getBody().getCode()).isEqualTo("INVALID_REQUEST");
+    }
+
+    @Test
+    void 이력은_최신순으로_페이지_단위로_조회된다() {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "상품 F", 10), StockResponse.class).getBody();
+        testRestTemplate.postForEntity(INBOUND_URL, new InboundRequest(sku, null, 5), StockResponse.class);
+        testRestTemplate.postForEntity(OUTBOUND_URL, new OutboundRequest(sku, 3), StockResponse.class);
+        String historiesUrl = "/api/v1/products/" + stocked.getId() + "/stock/histories";
+
+        // 첫 페이지: 가장 최근 2건 (출고 3 → 입고 5)
+        ResponseEntity<HistoryPage> first = testRestTemplate.getForEntity(
+                historiesUrl + "?page=0&size=2", HistoryPage.class);
+
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<StockHistoryResponse> firstContent = first.getBody().getContent();
+        assertThat(firstContent).extracting(StockHistoryResponse::getType)
+                .containsExactly(StockHistoryType.OUTBOUND, StockHistoryType.INBOUND);
+        assertThat(firstContent).extracting(StockHistoryResponse::getQuantity).containsExactly(3, 5);
+        assertThat(firstContent).extracting(StockHistoryResponse::getQuantityAfter).containsExactly(12, 15);
+        assertThat(first.getBody().getPage().getTotalElements()).isEqualTo(3);
+
+        // 둘째 페이지: 남은 1건 (최초 입고 10)
+        ResponseEntity<HistoryPage> second = testRestTemplate.getForEntity(
+                historiesUrl + "?page=1&size=2", HistoryPage.class);
+
+        List<StockHistoryResponse> secondContent = second.getBody().getContent();
+        assertThat(secondContent).extracting(StockHistoryResponse::getType).containsExactly(StockHistoryType.INBOUND);
+        assertThat(secondContent).extracting(StockHistoryResponse::getQuantityAfter).containsExactly(10);
+    }
+
+    @Test
+    void 없는_상품의_이력을_조회하면_404() {
+        ResponseEntity<ErrorResponse> entity = testRestTemplate.getForEntity(
+                "/api/v1/products/999999/stock/histories", ErrorResponse.class);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(entity.getBody().getCode()).isEqualTo("PRODUCT_NOT_FOUND");
+    }
+
+    /**
+     * 이력 조회 응답을 읽기 위한 테스트 전용 클래스.
+     * 운영 코드는 Page를 그대로 반환하고, 스프링이 {"content": [...], "page": {...}} 형식의 JSON을 만든다.
+     */
+    @Getter
+    @NoArgsConstructor
+    static class HistoryPage {
+        private List<StockHistoryResponse> content;
+        private PageInfo page;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    static class PageInfo {
+        private int totalElements;
     }
 }

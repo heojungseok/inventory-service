@@ -17,6 +17,11 @@ spring:
         format_sql: true
         highlight_sql: true
         use_sql_comments: true
+  data:
+    web:
+      pageable:
+        serialization-mode: via-dto
+        max-page-size: 100
 
 logging:
   level:
