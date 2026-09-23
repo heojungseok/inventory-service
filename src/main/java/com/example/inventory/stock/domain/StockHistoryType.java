@@ -7,8 +7,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 public enum StockHistoryType {
 
-    INBOUND("입고"),
-    OUTBOUND("출고");
+    INBOUND,
+    OUTBOUND;
 
-    private final String message;
 }
