@@ -85,6 +85,14 @@ public class StockApiTest extends IntegrationTest {
         assertThat(entity.getBody().getCode()).isEqualTo("INVALID_REQUEST");
     }
 
+    @Test
+    void 입고_name이_100자를_넘으면_400() {
+        ResponseEntity<ErrorResponse> entity = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(uniqueSku(), "가".repeat(101), 10), ErrorResponse.class);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(entity.getBody().getCode()).isEqualTo("INVALID_REQUEST");
+    }
 
     @Test
     void 출고하면_수량이_감소한다() {
