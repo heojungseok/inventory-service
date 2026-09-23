@@ -2,6 +2,7 @@ package com.example.inventory.stock;
 
 import com.example.inventory.global.response.ErrorResponse;
 import com.example.inventory.stock.in.InboundRequest;
+import com.example.inventory.stock.in.OutboundRequest;
 import com.example.inventory.stock.in.StockResponse;
 import com.example.inventory.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class StockApiTest extends IntegrationTest {
 
     private static final String INBOUND_URL = "/api/v1/stocks/inbound";
+    private static final String OUTBOUND_URL = "/api/v1/stocks/outbound";
 
     // 테스트마다 고유한 sku를 써서 테스트 간 데이터가 섞이지 않게 한다 (@Transactional 롤백은 동시성 테스트와 충돌하므로 쓰지 않음)
     private static String uniqueSku() {
@@ -78,6 +80,60 @@ public class StockApiTest extends IntegrationTest {
     void 입고_수량이_0이면_400() {
         ResponseEntity<ErrorResponse> entity = testRestTemplate.postForEntity(
                 INBOUND_URL, new InboundRequest(uniqueSku(), "상품 C", 0), ErrorResponse.class);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(entity.getBody().getCode()).isEqualTo("INVALID_REQUEST");
+    }
+
+
+    @Test
+    void 출고하면_수량이_감소한다() {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "상품 D", 10), StockResponse.class).getBody();
+
+        ResponseEntity<StockResponse> outbound = testRestTemplate.postForEntity(
+                OUTBOUND_URL, new OutboundRequest(sku, 3), StockResponse.class);
+
+        assertThat(outbound.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(outbound.getBody().getQuantity()).isEqualTo(7);
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(7);
+    }
+
+    @Test
+    void 재고보다_많이_출고하면_409이고_수량은_그대로다() {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "상품 E", 10), StockResponse.class).getBody();
+
+        ResponseEntity<ErrorResponse> outbound = testRestTemplate.postForEntity(
+                OUTBOUND_URL, new OutboundRequest(sku, 11), ErrorResponse.class);
+
+        assertThat(outbound.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(outbound.getBody().getCode()).isEqualTo("INSUFFICIENT_STOCK");
+
+        // 실패한 출고는 아무것도 바꾸지 않아야 한다 (트랜잭션 롤백)
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void 없는_sku로_출고하면_404() {
+        ResponseEntity<ErrorResponse> entity = testRestTemplate.postForEntity(
+                OUTBOUND_URL, new OutboundRequest(uniqueSku(), 1), ErrorResponse.class);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(entity.getBody().getCode()).isEqualTo("PRODUCT_NOT_FOUND");
+    }
+
+    @Test
+    void 출고_수량이_0이면_400() {
+        ResponseEntity<ErrorResponse> entity = testRestTemplate.postForEntity(
+                OUTBOUND_URL, new OutboundRequest(uniqueSku(), 0), ErrorResponse.class);
 
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(entity.getBody().getCode()).isEqualTo("INVALID_REQUEST");
