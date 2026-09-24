@@ -1,0 +1,396 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "inventory-service 구조",
+  "quality_profile": "showcase",
+  "repository": {
+   "url": "https://github.com/heojungseok/Inventory-service",
+   "provider": "github",
+   "revision": "91eb2f7123d26f88bbdbdf3151f6b57f307a630c"
+  },
+  "viewBox": [
+   1240,
+   620
+  ],
+  "views": [
+   {
+    "id": "request-path",
+    "label": "입출고 요청 경로",
+    "focus": [
+     "client",
+     "controller",
+     "app",
+     "domain",
+     "stock-repo",
+     "db"
+    ],
+    "note": "HTTP 요청이 유스케이스를 거쳐 도메인 규칙과 재고 행 잠금으로 이어지는 주 경로"
+   },
+   {
+    "id": "new-product",
+    "label": "미등록 상품 입고",
+    "focus": [
+     "app",
+     "product-register",
+     "product-repo",
+     "db"
+    ],
+    "note": "처음 보는 sku는 ON CONFLICT DO NOTHING으로 상품을 만든 뒤 기존 입고 흐름에 합류"
+   },
+   {
+    "id": "idempotency",
+    "label": "멱등 키 재시도",
+    "focus": [
+     "app",
+     "idempotency",
+     "stock-repo"
+    ],
+    "note": "재고 행을 잠근 뒤 키로 이력을 찾아 같은 요청이면 처음 응답을 재현"
+   },
+   {
+    "id": "errors",
+    "label": "에러 응답",
+    "focus": [
+     "controller",
+     "error-handler",
+     "client"
+    ],
+    "note": "모든 예외는 하나의 핸들러가 {code, message, timestamp}로 통일"
+   }
+  ]
+ },
+ "components": [
+  {
+   "id": "client",
+   "type": "external",
+   "label": "클라이언트",
+   "sublabel": "Swagger UI / HTTP",
+   "pos": [
+    40,
+    290
+   ],
+   "size": [
+    120,
+    64
+   ]
+  },
+  {
+   "id": "controller",
+   "type": "backend",
+   "label": "StockController",
+   "sublabel": "in · DTO → 값",
+   "pos": [
+    240,
+    290
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/stock/in/StockController.java"
+    }
+   ]
+  },
+  {
+   "id": "app",
+   "type": "backend",
+   "label": "유스케이스",
+   "sublabel": "app · 입고·출고·조회",
+   "pos": [
+    460,
+    290
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "tag": "@Transactional",
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/stock/app/StockInboundUseCase.java",
+     "label": "입고"
+    },
+    {
+     "path": "src/main/java/com/example/inventory/stock/app/StockOutboundUseCase.java",
+     "label": "출고"
+    },
+    {
+     "path": "src/main/java/com/example/inventory/stock/app/StockQueryUseCase.java",
+     "label": "조회"
+    }
+   ]
+  },
+  {
+   "id": "domain",
+   "type": "backend",
+   "label": "Stock · StockHistory",
+   "sublabel": "domain · 음수 불가·수량 ≥ 1",
+   "pos": [
+    690,
+    290
+   ],
+   "size": [
+    160,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/stock/domain/Stock.java"
+    }
+   ]
+  },
+  {
+   "id": "stock-repo",
+   "type": "backend",
+   "label": "StockRepository",
+   "sublabel": "out · FOR UPDATE",
+   "pos": [
+    930,
+    290
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/stock/out/StockRepository.java"
+    }
+   ]
+  },
+  {
+   "id": "db",
+   "type": "database",
+   "label": "PostgreSQL 17",
+   "sublabel": "Flyway V1·V2",
+   "pos": [
+    1120,
+    290
+   ],
+   "size": [
+    100,
+    64
+   ]
+  },
+  {
+   "id": "product-register",
+   "type": "backend",
+   "label": "ProductRegisterUseCase",
+   "sublabel": "미등록 sku 등록",
+   "pos": [
+    690,
+    120
+   ],
+   "size": [
+    160,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/product/app/ProductRegisterUseCase.java"
+    }
+   ]
+  },
+  {
+   "id": "product-repo",
+   "type": "backend",
+   "label": "ProductRepository",
+   "sublabel": "ON CONFLICT DO NOTHING",
+   "pos": [
+    930,
+    120
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/product/out/ProductRepository.java"
+    }
+   ]
+  },
+  {
+   "id": "idempotency",
+   "type": "backend",
+   "label": "StockIdempotencyChecker",
+   "sublabel": "Idempotency-Key 판정",
+   "pos": [
+    690,
+    460
+   ],
+   "size": [
+    160,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/stock/app/StockIdempotencyChecker.java"
+    }
+   ]
+  },
+  {
+   "id": "error-handler",
+   "type": "backend",
+   "label": "GlobalExceptionHandler",
+   "sublabel": "global · ErrorCode",
+   "pos": [
+    40,
+    460
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "sources": [
+    {
+     "path": "src/main/java/com/example/inventory/global/exception/GlobalExceptionHandler.java"
+    }
+   ]
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "product 패키지",
+   "wraps": [
+    "product-register",
+    "product-repo"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "stock 패키지 · in → app → domain ← out",
+   "wraps": [
+    "controller",
+    "app",
+    "domain",
+    "stock-repo",
+    "idempotency"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "c-http",
+   "from": "client",
+   "to": "controller",
+   "label": "HTTP",
+   "variant": "emphasis"
+  },
+  {
+   "id": "c-call",
+   "from": "controller",
+   "to": "app",
+   "label": "호출"
+  },
+  {
+   "id": "c-rule",
+   "from": "app",
+   "to": "domain",
+   "label": "규칙 실행"
+  },
+  {
+   "id": "c-lock",
+   "from": "domain",
+   "to": "stock-repo",
+   "label": "잠금 · 저장"
+  },
+  {
+   "id": "c-sql",
+   "from": "stock-repo",
+   "to": "db",
+   "label": "SQL"
+  },
+  {
+   "id": "c-register",
+   "from": "app",
+   "to": "product-register",
+   "label": "처음 보는 sku",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "left"
+  },
+  {
+   "id": "c-upsert",
+   "from": "product-register",
+   "to": "product-repo",
+   "label": "등록"
+  },
+  {
+   "id": "c-product-sql",
+   "from": "product-repo",
+   "to": "db",
+   "label": "SQL",
+   "fromSide": "right",
+   "toSide": "top"
+  },
+  {
+   "id": "c-idem",
+   "from": "app",
+   "to": "idempotency",
+   "label": "잠금 뒤 키 확인",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "left"
+  },
+  {
+   "id": "c-idem-lookup",
+   "from": "idempotency",
+   "to": "stock-repo",
+   "label": "키로 이력 조회",
+   "fromSide": "right",
+   "toSide": "bottom"
+  },
+  {
+   "id": "c-exception",
+   "from": "controller",
+   "to": "error-handler",
+   "label": "예외",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "right"
+  },
+  {
+   "id": "c-error",
+   "from": "error-handler",
+   "to": "client",
+   "label": "에러 응답",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "bottom"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "의존 방향",
+   "items": [
+    "in → app → domain ← out. in은 out을 직접 부르지 않음",
+    "규칙은 Stock.increase / decrease 한 곳",
+    "stock → product 단방향 참조"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "동시성",
+   "items": [
+    "stock 행 SELECT ... FOR UPDATE, 교체 지점은 StockRepository 한 곳",
+    "동시 출고 150건 → 성공 100 · 409 50 · 잔량 0",
+    "멱등 키는 잠금 뒤 확인 → 동시 재시도 10건도 1회 반영"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "정합성",
+   "items": [
+    "잠금 · 수량 변경 · 이력 저장이 한 트랜잭션",
+    "stock_history는 수정 · 삭제 없는 원장, quantity_after 보존",
+    "DB CHECK (quantity >= 0)가 음수 저장 거부"
+   ]
+  }
+ ]
+}

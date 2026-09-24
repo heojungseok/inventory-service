@@ -232,6 +232,10 @@ ORDER BY day;
 
 단일 모듈 안에서 기능(`product`, `stock`)별로 패키지를 나누고, 각 기능 안에서 다시 계층을 나눴습니다.
 
+![inventory-service 구조도](docs/architecture.svg)
+
+확대·검색·경로 추적이 되는 [인터랙티브 버전](docs/architecture.html)은 파일을 내려받아 브라우저로 열면 됩니다.
+
 ```text
 com.example.inventory
 ├── global
