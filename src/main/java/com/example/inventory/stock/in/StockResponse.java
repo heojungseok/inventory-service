@@ -1,6 +1,7 @@
 package com.example.inventory.stock.in;
 
 import com.example.inventory.stock.domain.Stock;
+import com.example.inventory.stock.domain.StockHistory;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -19,6 +20,15 @@ public class StockResponse {
                 stock.getProduct().getSku(),
                 stock.getProduct().getName(),
                 stock.getQuantity()
+        );
+    }
+
+    public static StockResponse fromHistory(StockHistory history) {
+        return new StockResponse(
+                history.getStock().getProduct().getId(),
+                history.getStock().getProduct().getSku(),
+                history.getStock().getProduct().getName(),
+                history.getQuantityAfter()
         );
     }
 }

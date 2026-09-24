@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,24 +26,36 @@ public class StockController {
     }
 
     @PostMapping("/stocks/inbound")
-    public StockResponse inboundRequest(@Valid @RequestBody InboundRequest request) {
+    public StockResponse inboundRequest(
+            @Valid @RequestBody InboundRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+    ) {
         return stockInboundUseCase.inbound(
                 request.getSku(),
                 request.getName(),
-                request.getQuantity()
+                request.getQuantity(),
+                getIdempotencyKey(idempotencyKey)
         );
     }
 
     @PostMapping("/stocks/outbound")
-    public StockResponse outboundRequest(@Valid @RequestBody OutboundRequest request) {
+    public StockResponse outboundRequest(
+            @Valid @RequestBody OutboundRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+    ) {
         return stockOutboundUseCase.outbound(
                 request.getSku(),
-                request.getQuantity()
+                request.getQuantity(),
+                getIdempotencyKey(idempotencyKey)
         );
     }
 
     @GetMapping("/products/{productId}/stock/histories")
     public Page<StockHistoryResponse> getStockHistories(@PathVariable Long productId, Pageable pageable) {
         return stockHistoryQueryUseCase.findHistories(productId, pageable);
+    }
+
+    private String getIdempotencyKey(String idempotencyKey) {
+        return StringUtils.hasText(idempotencyKey) ? idempotencyKey : null;
     }
 }

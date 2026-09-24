@@ -191,6 +191,71 @@ public class StockApiTest extends IntegrationTest {
         assertThat(entity.getBody().getCode()).isEqualTo("PRODUCT_NOT_FOUND");
     }
 
+    @Test
+    void 같은_멱등_키로_출고를_다시_보내면_처음_결과를_돌려주고_재고는_한_번만_줄어든다() {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "상품 G", 10), StockResponse.class).getBody();
+        String key = UUID.randomUUID().toString();
+
+        ResponseEntity<StockResponse> first = testRestTemplate.postForEntity(
+                OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(sku, 3), key), StockResponse.class);
+        // 그 사이 키 없는 다른 출고가 하나 끼어든다 (7 → 5)
+        testRestTemplate.postForEntity(OUTBOUND_URL, new OutboundRequest(sku, 2), StockResponse.class);
+        // 재시도: 같은 키로 같은 요청을 다시 보낸다.
+        // 서버는 클라이언트 쪽 타임아웃을 알 수 없으므로, 재시도는 "같은 요청이 한 번 더 온 것"으로만 보인다
+        // (처리 중에 재시도가 겹치는 경우는 StockConcurrencyTest가 확인한다)
+        ResponseEntity<StockResponse> retry = testRestTemplate.postForEntity(
+                OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(sku, 3), key), StockResponse.class);
+
+        assertThat(first.getBody().getQuantity()).isEqualTo(7);
+        // 재시도는 지금 재고(5)가 아니라 처음 응답(7)을 그대로 돌려준다
+        assertThat(retry.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(retry.getBody().getQuantity()).isEqualTo(7);
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    void 같은_멱등_키로_다른_수량을_보내면_409이고_재고는_그대로다() {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "상품 H", 10), StockResponse.class).getBody();
+        String key = UUID.randomUUID().toString();
+        testRestTemplate.postForEntity(
+                OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(sku, 3), key), StockResponse.class);
+
+        ResponseEntity<ErrorResponse> conflict = testRestTemplate.postForEntity(
+                OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(sku, 5), key), ErrorResponse.class);
+
+        assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(conflict.getBody().getCode()).isEqualTo("IDEMPOTENCY_CONFLICT");
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(7);
+    }
+
+    @Test
+    void 같은_멱등_키로_신규_입고를_다시_보내면_한_번만_반영된다() {
+        String sku = uniqueSku();
+        String key = UUID.randomUUID().toString();
+
+        ResponseEntity<StockResponse> first = testRestTemplate.postForEntity(
+                INBOUND_URL, withIdempotencyKey(new InboundRequest(sku, "상품 I", 10), key), StockResponse.class);
+        ResponseEntity<StockResponse> retry = testRestTemplate.postForEntity(
+                INBOUND_URL, withIdempotencyKey(new InboundRequest(sku, "상품 I", 10), key), StockResponse.class);
+
+        assertThat(retry.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(retry.getBody().getQuantity()).isEqualTo(10);
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + first.getBody().getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(10);
+    }
+
     /**
      * 이력 조회 응답을 읽기 위한 테스트 전용 클래스.
      * 운영 코드는 Page를 그대로 반환하고, 스프링이 {"content": [...], "page": {...}} 형식의 JSON을 만든다.

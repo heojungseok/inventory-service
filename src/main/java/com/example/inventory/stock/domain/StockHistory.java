@@ -26,13 +26,19 @@ public class StockHistory {
     private StockHistoryType type;
     private int quantity;
     private int quantityAfter;
+    private String idempotencyKey;
     @CreatedDate
     private Instant createdAt;
 
-    public StockHistory(Stock stock, StockHistoryType type, int quantity) {
+    public StockHistory(Stock stock, StockHistoryType type, int quantity, String idempotencyKey) {
         this.stock = stock;
         this.type = type;
         this.quantity = quantity;
         this.quantityAfter = stock.getQuantity();
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public boolean isSameRequest(Stock requestStock, StockHistoryType requestType, int requestQuantity) {
+        return stock.getId().equals(requestStock.getId()) && type == requestType && quantity == requestQuantity;
     }
 }

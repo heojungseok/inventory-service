@@ -70,6 +70,28 @@ public class StockConcurrencyTest extends IntegrationTest {
         assertThat(query.getBody().getQuantity()).isEqualTo(20);
     }
 
+    @Test
+    void 같은_멱등_키로_동시에_출고_10건을_보내면_재고는_한_번만_줄어든다() throws Exception {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "멱등 출고 상품", 100), StockResponse.class).getBody();
+        String key = UUID.randomUUID().toString();
+
+        List<StockResponse> results = runConcurrently(10, () -> {
+            ResponseEntity<StockResponse> entity = testRestTemplate.postForEntity(
+                    OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(sku, 1), key), StockResponse.class);
+            assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+            return entity.getBody();
+        });
+
+        // 10건 모두 같은 결과(99)를 받는다. 재시도가 동시에 몰려도 한 번만 반영된다
+        assertThat(results).extracting(StockResponse::getQuantity).containsOnly(99);
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(99);
+    }
+
     /**
      * count개의 작업을 스레드 풀에 올리고, 모두 준비된 뒤 한 번에 출발시킨다.
      * CountDownLatch가 없으면 앞 요청이 끝난 뒤 뒤 요청이 시작돼 동시성이 생기지 않는다.
