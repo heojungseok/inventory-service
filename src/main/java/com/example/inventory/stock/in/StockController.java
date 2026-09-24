@@ -25,6 +25,11 @@ public class StockController {
         return stockQueryUseCase.findByProductId(productId);
     }
 
+    @GetMapping("/stocks")
+    public Page<StockResponse> getStocks(@RequestParam(defaultValue = "0") int page) {
+        return stockQueryUseCase.findStocks(page);
+    }
+
     @PostMapping("/stocks/inbound")
     public StockResponse inboundRequest(
             @Valid @RequestBody InboundRequest request,
