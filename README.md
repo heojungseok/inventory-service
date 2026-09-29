@@ -82,6 +82,12 @@ Docker가 설치되어 있어야 합니다. 앱 실행과 테스트 실행은 �
 
 이미 운영 중인 PostgreSQL을 쓰려면 환경 변수 `DB_URL`, `DB_USER`, `DB_PASSWORD`로 접속 정보를 바꿀 수 있습니다.
 
+실행되는 SQL과 바인딩 값, 트랜잭션 경계를 로그로 보려면 `local` 프로필로 실행합니다. 바인딩 값에 요청 데이터가 그대로 찍히므로 기본 설정에서는 꺼 두었습니다.
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
 ### 테스트 실행
 
 ```bash
