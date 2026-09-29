@@ -2,6 +2,7 @@ package com.example.inventory.global.exception;
 
 import com.example.inventory.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,6 +36,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMalformedRequest() {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST));
+    }
+
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleLockTimeout() {
+        return ResponseEntity.status(ErrorCode.LOCK_TIMEOUT.getStatus())
+                .body(ErrorResponse.of(ErrorCode.LOCK_TIMEOUT));
     }
 
     @ExceptionHandler(Exception.class)

@@ -57,7 +57,7 @@ public class StockController {
     }
 
     @Operation(summary = "출고", description = "재고보다 많으면 409 INSUFFICIENT_STOCK, 없는 sku면 404 PRODUCT_NOT_FOUND. "
-            + "동시 요청은 재고 행 비관적 락으로 순서대로 처리한다")
+            + "동시 요청은 재고 행 비관적 락으로 순서대로 처리하며, 락 대기가 3초를 넘으면 503 LOCK_TIMEOUT")
     @PostMapping("/stocks/outbound")
     public StockResponse outbound(
             @Valid @RequestBody OutboundRequest request,

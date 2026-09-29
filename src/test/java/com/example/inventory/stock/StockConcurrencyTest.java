@@ -1,13 +1,18 @@
 package com.example.inventory.stock;
 
+import com.example.inventory.global.response.ErrorResponse;
 import com.example.inventory.stock.in.InboundRequest;
 import com.example.inventory.stock.in.OutboundRequest;
 import com.example.inventory.stock.in.StockResponse;
 import com.example.inventory.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +29,9 @@ public class StockConcurrencyTest extends IntegrationTest {
 
     private static final String INBOUND_URL = "/api/v1/stocks/inbound";
     private static final String OUTBOUND_URL = "/api/v1/stocks/outbound";
+
+    @Autowired
+    private DataSource dataSource;
 
     private static String uniqueSku() {
         return "SKU-" + UUID.randomUUID().toString().substring(0, 8);
@@ -90,6 +98,43 @@ public class StockConcurrencyTest extends IntegrationTest {
         ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
                 "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
         assertThat(query.getBody().getQuantity()).isEqualTo(99);
+    }
+
+    @Test
+    void 다른_트랜잭션이_재고_행을_잡고_있으면_출고는_무한정_기다리지_않고_503을_돌려준다() throws Exception {
+        String sku = uniqueSku();
+        StockResponse stocked = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(sku, "잠금 대기 상품", 10), StockResponse.class).getBody();
+
+        // 다른 프로세스가 같은 재고 행을 잡고 놓지 않는 상황을 만든다
+        try (Connection holder = dataSource.getConnection()) {
+            holder.setAutoCommit(false);
+            lockStockRow(holder, sku);
+
+            ExecutorService pool = Executors.newSingleThreadExecutor();
+            Future<ResponseEntity<ErrorResponse>> outbound = pool.submit(() -> testRestTemplate.postForEntity(
+                    OUTBOUND_URL, new OutboundRequest(sku, 1), ErrorResponse.class));
+
+            // 락 대기 상한(3초)이 없으면 이 get이 10초를 넘겨 실패한다
+            ResponseEntity<ErrorResponse> response = outbound.get(10, TimeUnit.SECONDS);
+            holder.rollback();
+            pool.shutdown();
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            assertThat(response.getBody().getCode()).isEqualTo("LOCK_TIMEOUT");
+        }
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(10);
+    }
+
+    private void lockStockRow(Connection connection, String sku) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "select s.id from stock s join product p on p.id = s.product_id where p.sku = ? for update of s")) {
+            statement.setString(1, sku);
+            statement.executeQuery();
+        }
     }
 
     /**

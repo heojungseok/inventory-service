@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
                 - 404 `PRODUCT_NOT_FOUND`: 상품 없음
                 - 409 `INSUFFICIENT_STOCK`: 재고 부족
                 - 409 `IDEMPOTENCY_CONFLICT`: 같은 멱등 키로 다른 요청
+                - 503 `LOCK_TIMEOUT`: 다른 요청이 같은 재고를 처리 중(락 대기 3초 초과)
                 - 500 `INTERNAL_ERROR`: 서버 오류
                 """))
 public class SwaggerConfig {
