@@ -29,4 +29,11 @@ public class Product {
     @LastModifiedDate
     private Instant updatedAt;
 
+    public Product(String sku, String name) {
+        if (name == null || name.isBlank()) {
+            throw new ProductNameRequiredException();
+        }
+        this.sku = sku;
+        this.name = name;
+    }
 }

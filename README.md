@@ -250,13 +250,13 @@ com.example.inventory
 │   └── response      ErrorResponse
 ├── product
 │   ├── app           ProductRegisterUseCase
-│   ├── domain        Product, ProductNotFoundException
+│   ├── domain        Product, ProductNotFoundException, ProductNameRequiredException
 │   └── out           ProductRepository
 └── stock
     ├── in            StockController, 요청 DTO
     ├── app           StockInboundUseCase, StockOutboundUseCase, StockQueryUseCase,
     │                 StockHistoryQueryUseCase, StockIdempotencyChecker, 응답 DTO
-    ├── domain        Stock, StockHistory, InsufficientStockException
+    ├── domain        Stock, StockHistory, InsufficientStockException, InvalidQuantityException
     └── out           StockRepository, StockHistoryRepository
 ```
 
@@ -264,7 +264,7 @@ com.example.inventory
 
 - `in`은 HTTP 요청을 받는 계층입니다. 요청 DTO를 풀어 값으로 `app`에 넘기고, `out`을 직접 부르지 않습니다. 응답 DTO는 유스케이스의 출력이라 `app`에 두어, `app`이 `in`에 의존하지 않습니다.
 - `app`은 사용자의 행위(입고한다, 출고한다, 재고를 본다)를 하나씩 클래스로 옮긴 계층입니다. 클래스 이름이 곧 기능 목록이 되고, 한 행위의 흐름(재고 행 잠금 → 규칙 실행 → 이력 저장)이 한 클래스 안에서 끝납니다. 업무 규칙은 갖지 않습니다.
-- `domain`은 HTTP, 트랜잭션, DB 접근 방법을 모릅니다. 다른 계층에 의존하지 않고 업무 규칙만 갖습니다. "재고는 음수가 될 수 없다", "입출고 수량은 1 이상이다" 같은 규칙은 **`Stock.increase()`와 `Stock.decrease()`에만** 있습니다.
+- `domain`은 HTTP, 트랜잭션, DB 접근 방법을 모릅니다. 다른 계층에 의존하지 않고 업무 규칙만 갖습니다. "재고는 음수가 될 수 없다", "입출고 수량은 1 이상이다" 같은 규칙은 **`Stock.increase()`와 `Stock.decrease()`에만** 있습니다. 신규 상품에 상품명이 필요하다는 규칙은 `Product` 생성자에 있습니다.
 - `out`은 DB 접근을 담당합니다. 락을 거는 조회도 여기에 있습니다.
 - 예외는 규칙이 있는 곳에 두고, HTTP 응답으로 바꾸는 일은 `global`의 핸들러만 합니다. 재고 부족과 상품 없음은 도메인에, 멱등 키 충돌은 `stock.app`에 있으며 모두 HTTP 상태를 모르는 평범한 `RuntimeException`입니다.
 
@@ -326,7 +326,7 @@ com.example.inventory
 | 다른 트랜잭션이 재고 행을 잡고 놓지 않는 동안 출고 요청 | 3초 뒤 `503 LOCK_TIMEOUT`, 재고는 그대로 | 통과 |
 | 다른 상품의 요청이 같은 멱등 키로 이력을 쓰는 도중에 출고 요청 | 늦은 요청은 `409 IDEMPOTENCY_CONFLICT`, 재고는 그대로 | 통과 |
 
-전체 테스트는 28개입니다. 도메인 규칙 단위 테스트 4개, API 통합 테스트 18개, 동시성 테스트 5개, 앱 기동 1개입니다.
+전체 테스트는 29개입니다. 도메인 규칙 단위 테스트 5개, API 통합 테스트 18개, 동시성 테스트 5개, 앱 기동 1개입니다.
 
 ### 6.3 확장성
 
