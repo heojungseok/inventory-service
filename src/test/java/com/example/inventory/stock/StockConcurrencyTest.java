@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -127,6 +128,70 @@ public class StockConcurrencyTest extends IntegrationTest {
         ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
                 "/api/v1/products/" + stocked.getId() + "/stock", StockResponse.class);
         assertThat(query.getBody().getQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    void 다른_상품에_같은_멱등_키가_동시에_쓰이면_늦은_요청은_409이고_재고는_그대로다() throws Exception {
+        String skuA = uniqueSku();
+        String skuB = uniqueSku();
+        StockResponse stockA = testRestTemplate.postForEntity(
+                INBOUND_URL, new InboundRequest(skuA, "멱등 충돌 상품 A", 10), StockResponse.class).getBody();
+        testRestTemplate.postForEntity(INBOUND_URL, new InboundRequest(skuB, "멱등 충돌 상품 B", 10), StockResponse.class);
+        String key = UUID.randomUUID().toString();
+
+        // 상품 B 요청이 같은 키로 이력을 쓰고 아직 커밋하지 않은 순간을 만든다
+        try (Connection other = dataSource.getConnection()) {
+            other.setAutoCommit(false);
+            insertHistoryWithKey(other, skuB, key);
+
+            ExecutorService pool = Executors.newSingleThreadExecutor();
+            Future<ResponseEntity<ErrorResponse>> outbound = pool.submit(() -> testRestTemplate.postForEntity(
+                    OUTBOUND_URL, withIdempotencyKey(new OutboundRequest(skuA, 1), key), ErrorResponse.class));
+
+            // 상품 A 요청은 키 조회를 통과한 뒤(B의 이력이 아직 안 보임) 이력 INSERT에서 B의 커밋을 기다린다
+            awaitInsertWaitingOnLock();
+            other.commit();
+
+            ResponseEntity<ErrorResponse> response = outbound.get(10, TimeUnit.SECONDS);
+            pool.shutdown();
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody().getCode()).isEqualTo("IDEMPOTENCY_CONFLICT");
+        }
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity(
+                "/api/v1/products/" + stockA.getId() + "/stock", StockResponse.class);
+        assertThat(query.getBody().getQuantity()).isEqualTo(10);
+    }
+
+    private void insertHistoryWithKey(Connection connection, String sku, String key) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                insert into stock_history (stock_id, type, quantity, quantity_after, idempotency_key)
+                select s.id, 'OUTBOUND', 1, s.quantity - 1, ? from stock s join product p on p.id = s.product_id where p.sku = ?
+                """)) {
+            statement.setString(1, key);
+            statement.setString(2, sku);
+            statement.executeUpdate();
+        }
+    }
+
+    private void awaitInsertWaitingOnLock() throws Exception {
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (System.currentTimeMillis() < deadline) {
+            try (Connection monitor = dataSource.getConnection();
+                 PreparedStatement statement = monitor.prepareStatement("""
+                         select count(*) from pg_stat_activity
+                         where wait_event_type = 'Lock' and query ilike '%insert%stock_history%'
+                         """);
+                 ResultSet rs = statement.executeQuery()) {
+                rs.next();
+                if (rs.getInt(1) > 0) {
+                    return;
+                }
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("출고 요청이 이력 INSERT에서 대기하지 않았습니다");
     }
 
     private void lockStockRow(Connection connection, String sku) throws Exception {
