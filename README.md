@@ -249,16 +249,16 @@ com.example.inventory
 │   ├── domain        Product, ProductNotFoundException
 │   └── out           ProductRepository
 └── stock
-    ├── in            StockController, 요청·응답 DTO
+    ├── in            StockController, 요청 DTO
     ├── app           StockInboundUseCase, StockOutboundUseCase, StockQueryUseCase,
-    │                 StockHistoryQueryUseCase, StockIdempotencyChecker
+    │                 StockHistoryQueryUseCase, StockIdempotencyChecker, 응답 DTO
     ├── domain        Stock, StockHistory, InsufficientStockException
     └── out           StockRepository, StockHistoryRepository
 ```
 
 의존 방향은 `in → app → domain ← out`입니다. 각 계층의 역할은 다음과 같습니다.
 
-- `in`은 HTTP를 아는 유일한 계층입니다. 요청 DTO를 풀어 값으로 `app`에 넘기고, `out`을 직접 부르지 않습니다.
+- `in`은 HTTP 요청을 받는 계층입니다. 요청 DTO를 풀어 값으로 `app`에 넘기고, `out`을 직접 부르지 않습니다. 응답 DTO는 유스케이스의 출력이라 `app`에 두어, `app`이 `in`에 의존하지 않습니다.
 - `app`은 사용자의 행위(입고한다, 출고한다, 재고를 본다)를 하나씩 클래스로 옮긴 계층입니다. 클래스 이름이 곧 기능 목록이 되고, 한 행위의 흐름(재고 행 잠금 → 규칙 실행 → 이력 저장)이 한 클래스 안에서 끝납니다. 업무 규칙은 갖지 않습니다.
 - `domain`은 HTTP, 트랜잭션, DB 접근 방법을 모릅니다. 다른 계층에 의존하지 않고 업무 규칙만 갖습니다. "재고는 음수가 될 수 없다", "입출고 수량은 1 이상이다" 같은 규칙은 **`Stock.increase()`와 `Stock.decrease()`에만** 있습니다.
 - `out`은 DB 접근을 담당합니다. 락을 거는 조회도 여기에 있습니다.

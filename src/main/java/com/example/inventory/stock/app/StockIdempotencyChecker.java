@@ -3,7 +3,6 @@ package com.example.inventory.stock.app;
 import com.example.inventory.stock.domain.Stock;
 import com.example.inventory.stock.domain.StockHistory;
 import com.example.inventory.stock.domain.StockHistoryType;
-import com.example.inventory.stock.in.StockResponse;
 import com.example.inventory.stock.out.StockHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

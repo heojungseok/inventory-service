@@ -2,7 +2,6 @@ package com.example.inventory.stock.app;
 
 import com.example.inventory.product.domain.ProductNotFoundException;
 import com.example.inventory.stock.domain.Stock;
-import com.example.inventory.stock.in.StockResponse;
 import com.example.inventory.stock.out.StockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

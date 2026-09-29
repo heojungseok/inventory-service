@@ -3,7 +3,6 @@ package com.example.inventory.stock.app;
 import com.example.inventory.product.domain.ProductNotFoundException;
 import com.example.inventory.stock.domain.Stock;
 import com.example.inventory.stock.domain.StockHistory;
-import com.example.inventory.stock.in.StockHistoryResponse;
 import com.example.inventory.stock.out.StockHistoryRepository;
 import com.example.inventory.stock.out.StockRepository;
 import lombok.RequiredArgsConstructor;

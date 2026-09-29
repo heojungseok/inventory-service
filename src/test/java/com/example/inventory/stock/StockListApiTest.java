@@ -1,7 +1,7 @@
 package com.example.inventory.stock;
 
 import com.example.inventory.stock.in.InboundRequest;
-import com.example.inventory.stock.in.StockResponse;
+import com.example.inventory.stock.app.StockResponse;
 import com.example.inventory.support.IntegrationTest;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

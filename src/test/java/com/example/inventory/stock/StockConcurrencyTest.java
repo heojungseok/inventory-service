@@ -3,7 +3,7 @@ package com.example.inventory.stock;
 import com.example.inventory.global.response.ErrorResponse;
 import com.example.inventory.stock.in.InboundRequest;
 import com.example.inventory.stock.in.OutboundRequest;
-import com.example.inventory.stock.in.StockResponse;
+import com.example.inventory.stock.app.StockResponse;
 import com.example.inventory.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

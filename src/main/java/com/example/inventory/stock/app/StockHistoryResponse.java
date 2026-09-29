@@ -1,4 +1,4 @@
-package com.example.inventory.stock.in;
+package com.example.inventory.stock.app;
 
 import com.example.inventory.stock.domain.StockHistory;
 import com.example.inventory.stock.domain.StockHistoryType;

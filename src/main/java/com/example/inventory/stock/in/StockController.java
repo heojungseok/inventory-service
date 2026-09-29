@@ -1,9 +1,11 @@
 package com.example.inventory.stock.in;
 
 import com.example.inventory.stock.app.StockHistoryQueryUseCase;
+import com.example.inventory.stock.app.StockHistoryResponse;
 import com.example.inventory.stock.app.StockInboundUseCase;
 import com.example.inventory.stock.app.StockOutboundUseCase;
 import com.example.inventory.stock.app.StockQueryUseCase;
+import com.example.inventory.stock.app.StockResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
