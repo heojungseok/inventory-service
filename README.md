@@ -56,7 +56,7 @@
 | 스키마 관리 | Flyway |
 | 입력 검증 | Bean Validation |
 | API 문서 | springdoc-openapi 3.1.1 (Swagger UI) |
-| 테스트 | JUnit 5, Testcontainers (실제 PostgreSQL 컨테이너) |
+| 테스트 | JUnit 6, Testcontainers (실제 PostgreSQL 컨테이너), ArchUnit (패키지 의존 규칙) |
 | CI | GitHub Actions (push·PR마다 전체 테스트) |
 | 빌드 | Gradle (Groovy DSL) |
 
@@ -268,6 +268,8 @@ com.example.inventory
 - `out`은 DB 접근을 담당합니다. 락을 거는 조회도 여기에 있습니다.
 - 예외는 규칙이 있는 곳에 두고, HTTP 응답으로 바꾸는 일은 `global`의 핸들러만 합니다. 재고 부족과 상품 없음은 도메인에, 멱등 키 충돌은 `stock.app`에 있으며 모두 HTTP 상태를 모르는 평범한 `RuntimeException`입니다.
 
+이 규칙은 `ArchitectureTest`가 ArchUnit으로 검사합니다. 계층 의존 방향, 도메인이 HTTP·트랜잭션·리포지토리를 모르는지, product가 stock을 모르는지, 기능 패키지 사이의 순환, 컨트롤러와 리포지토리의 위치를 확인하며, 하나라도 어기면 빌드가 실패합니다.
+
 ### 6.2 과제 목표별 설계
 
 #### 상품의 현재 재고 수량 확인
@@ -326,7 +328,7 @@ com.example.inventory
 | 다른 트랜잭션이 재고 행을 잡고 놓지 않는 동안 출고 요청 | 3초 뒤 `503 LOCK_TIMEOUT`, 재고는 그대로 | 통과 |
 | 다른 상품의 요청이 같은 멱등 키로 이력을 쓰는 도중에 출고 요청 | 늦은 요청은 `409 IDEMPOTENCY_CONFLICT`, 재고는 그대로 | 통과 |
 
-전체 테스트는 29개입니다. 도메인 규칙 단위 테스트 5개, API 통합 테스트 18개, 동시성 테스트 5개, 앱 기동 1개입니다.
+전체 테스트는 35개입니다. 도메인 규칙 단위 테스트 5개, API 통합 테스트 18개, 동시성 테스트 5개, 구조 규칙 테스트 6개, 앱 기동 1개입니다.
 
 ### 6.3 확장성
 
