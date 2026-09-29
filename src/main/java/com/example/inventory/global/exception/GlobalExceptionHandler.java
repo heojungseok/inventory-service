@@ -5,6 +5,7 @@ import com.example.inventory.product.domain.ProductNameRequiredException;
 import com.example.inventory.product.domain.ProductNotFoundException;
 import com.example.inventory.stock.app.IdempotencyConflictException;
 import com.example.inventory.stock.domain.InsufficientStockException;
+import com.example.inventory.stock.domain.InvalidQuantityException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,7 +40,7 @@ public class GlobalExceptionHandler {
         return error(ErrorCode.IDEMPOTENCY_CONFLICT);
     }
 
-    @ExceptionHandler(ProductNameRequiredException.class)
+    @ExceptionHandler({ProductNameRequiredException.class, InvalidQuantityException.class})
     public ResponseEntity<ErrorResponse> handleInvalidDomainValue(RuntimeException e) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, e.getMessage()));

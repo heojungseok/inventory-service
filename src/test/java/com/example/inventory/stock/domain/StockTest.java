@@ -40,14 +40,14 @@ class StockTest {
         Stock stock = new Stock(null, 3);
 
         assertThatThrownBy(() -> stock.increase(-1))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidQuantityException.class);
         assertThatThrownBy(() -> stock.increase(0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidQuantityException.class);
 
         assertThatThrownBy(() -> stock.decrease(-1))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidQuantityException.class);
         assertThatThrownBy(() -> stock.decrease(0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidQuantityException.class);
 
     }
 

@@ -49,7 +49,7 @@ public class Stock {
 
     private void validateAmount(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("잘못된 수량입니다. 수량: " + amount);
+            throw new InvalidQuantityException(amount);
         }
     }
 
