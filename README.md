@@ -242,7 +242,7 @@ ORDER BY day;
 com.example.inventory
 ├── global
 │   ├── config        JPA Auditing, Swagger 설정
-│   ├── exception     ErrorCode, BusinessException, GlobalExceptionHandler
+│   ├── exception     ErrorCode, GlobalExceptionHandler
 │   └── response      ErrorResponse
 ├── product
 │   ├── app           ProductRegisterUseCase
@@ -262,7 +262,7 @@ com.example.inventory
 - `app`은 사용자의 행위(입고한다, 출고한다, 재고를 본다)를 하나씩 클래스로 옮긴 계층입니다. 클래스 이름이 곧 기능 목록이 되고, 한 행위의 흐름(재고 행 잠금 → 규칙 실행 → 이력 저장)이 한 클래스 안에서 끝납니다. 업무 규칙은 갖지 않습니다.
 - `domain`은 HTTP, 트랜잭션, DB 접근 방법을 모릅니다. 다른 계층에 의존하지 않고 업무 규칙만 갖습니다. "재고는 음수가 될 수 없다", "입출고 수량은 1 이상이다" 같은 규칙은 **`Stock.increase()`와 `Stock.decrease()`에만** 있습니다.
 - `out`은 DB 접근을 담당합니다. 락을 거는 조회도 여기에 있습니다.
-- 예외는 규칙이 있는 곳에 둡니다. 재고 부족은 `stock.domain`, 상품 없음은 `product.domain`, 요청 형식 오류와 공통 처리는 `global`입니다.
+- 예외는 규칙이 있는 곳에 두고, HTTP 응답으로 바꾸는 일은 `global`의 핸들러만 합니다. 재고 부족과 상품 없음은 도메인에, 멱등 키 충돌은 `stock.app`에 있으며 모두 HTTP 상태를 모르는 평범한 `RuntimeException`입니다.
 
 ### 6.2 과제 목표별 설계
 
@@ -339,7 +339,7 @@ com.example.inventory
 
 - 계층을 나눠 두어 변경 위치가 예측됩니다. HTTP 요청·응답 형식이 바뀌면 `in`만, 업무 규칙이 바뀌면 `domain`만 고칩니다.
 - 스키마 변경은 Flyway 버전 파일로 남깁니다. 엔티티와 어긋나면 `validate` 설정이 기동 때 잡습니다.
-- 에러 정의와 응답 형식을 `ErrorCode` enum 한 곳에서 관리합니다. 코드, HTTP 상태, 메시지가 함께 있어서 새 에러를 추가할 때 핸들러를 고치지 않아도 됩니다.
+- 에러 코드와 HTTP 상태의 연결은 `ErrorCode`와 전역 핸들러에서만 관리합니다. 도메인은 의미 있는 예외만 던지므로, 응답 형식이나 상태 코드를 바꿔도 도메인 코드는 그대로입니다.
 - API 문서는 컨트롤러 애노테이션으로 작성했습니다. 요청 예시와 에러 코드가 코드와 같은 파일에 있어서, 코드가 바뀌었는데 문서만 오래된 상태로 남는 일을 줄입니다.
 - 테스트는 Testcontainers로 띄운 PostgreSQL에서 실행됩니다. 락, 제약, upsert가 운영과 같은 조건에서 검증됩니다.
 - CI에서 push마다 전체 테스트가 돌고 결과가 배지로 보입니다.

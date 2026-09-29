@@ -1,10 +1,7 @@
 package com.example.inventory.stock.domain;
 
-import com.example.inventory.global.exception.BusinessException;
-import com.example.inventory.global.exception.ErrorCode;
-
-public class InsufficientStockException extends BusinessException {
+public class InsufficientStockException extends RuntimeException {
     public InsufficientStockException() {
-        super(ErrorCode.INSUFFICIENT_STOCK);
+        super("재고가 부족합니다.");
     }
 }

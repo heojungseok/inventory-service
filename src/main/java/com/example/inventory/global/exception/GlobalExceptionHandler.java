@@ -1,6 +1,10 @@
 package com.example.inventory.global.exception;
 
 import com.example.inventory.global.response.ErrorResponse;
+import com.example.inventory.product.domain.ProductNameRequiredException;
+import com.example.inventory.product.domain.ProductNotFoundException;
+import com.example.inventory.stock.app.IdempotencyConflictException;
+import com.example.inventory.stock.domain.InsufficientStockException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,11 +22,27 @@ public class GlobalExceptionHandler {
     /** V2에서 idempotency_key 컬럼에 UNIQUE를 걸 때 PostgreSQL이 붙인 이름 */
     private static final String IDEMPOTENCY_KEY_CONSTRAINT = "stock_history_idempotency_key_key";
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
-        return ResponseEntity
-                .status(e.getErrorCode().getStatus())
-                .body(ErrorResponse.of(e.getErrorCode()));
+    // 도메인·유스케이스 예외는 HTTP를 모른다. 어떤 에러 코드와 상태로 응답할지는 여기서만 정한다.
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductNotFound() {
+        return error(ErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock() {
+        return error(ErrorCode.INSUFFICIENT_STOCK);
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<ErrorResponse> handleIdempotencyConflict() {
+        return error(ErrorCode.IDEMPOTENCY_CONFLICT);
+    }
+
+    @ExceptionHandler(ProductNameRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDomainValue(RuntimeException e) {
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST, e.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -44,8 +64,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PessimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> handleLockTimeout() {
-        return ResponseEntity.status(ErrorCode.LOCK_TIMEOUT.getStatus())
-                .body(ErrorResponse.of(ErrorCode.LOCK_TIMEOUT));
+        return error(ErrorCode.LOCK_TIMEOUT);
     }
 
     /**
@@ -55,8 +74,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException e) throws Exception {
         if (isIdempotencyKeyViolation(e)) {
-            return ResponseEntity.status(ErrorCode.IDEMPOTENCY_CONFLICT.getStatus())
-                    .body(ErrorResponse.of(ErrorCode.IDEMPOTENCY_CONFLICT));
+            return error(ErrorCode.IDEMPOTENCY_CONFLICT);
         }
         return handleUnexpected(e);
     }
@@ -78,5 +96,9 @@ public class GlobalExceptionHandler {
         log.error("처리하지 못한 예외 ", e);
         return ResponseEntity.internalServerError()
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR));
+    }
+
+    private ResponseEntity<ErrorResponse> error(ErrorCode errorCode) {
+        return ResponseEntity.status(errorCode.getStatus()).body(ErrorResponse.of(errorCode));
     }
 }

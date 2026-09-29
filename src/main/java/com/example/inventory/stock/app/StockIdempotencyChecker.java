@@ -1,7 +1,5 @@
 package com.example.inventory.stock.app;
 
-import com.example.inventory.global.exception.BusinessException;
-import com.example.inventory.global.exception.ErrorCode;
 import com.example.inventory.stock.domain.Stock;
 import com.example.inventory.stock.domain.StockHistory;
 import com.example.inventory.stock.domain.StockHistoryType;
@@ -29,7 +27,7 @@ public class StockIdempotencyChecker {
         }
 
         if (!found.get().isSameRequest(stock, type, quantity)) {
-            throw new BusinessException(ErrorCode.IDEMPOTENCY_CONFLICT);
+            throw new IdempotencyConflictException();
         }
 
         return Optional.of(StockResponse.fromHistory(found.get()));

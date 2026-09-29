@@ -1,8 +1,7 @@
 package com.example.inventory.product.app;
 
-import com.example.inventory.global.exception.BusinessException;
-import com.example.inventory.global.exception.ErrorCode;
 import com.example.inventory.product.domain.Product;
+import com.example.inventory.product.domain.ProductNameRequiredException;
 import com.example.inventory.product.out.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,7 @@ public class ProductRegisterUseCase {
             return found.get();
         }
         if (name == null || name.isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            throw new ProductNameRequiredException();
         }
 
         productRepository.insertIfAbsent(sku, name);
