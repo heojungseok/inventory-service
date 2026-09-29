@@ -35,7 +35,7 @@
 | 입고 | 등록되지 않은 상품이면 신규 등록 후 입고 | 같은 API에서 `sku` 기준으로 등록합니다. 동시에 신규 입고가 와도 상품은 1건만 생깁니다 | `ProductRegisterUseCase` |
 | 출고 | 현재 재고 수량 감소 | `POST /api/v1/stocks/outbound` | `StockOutboundUseCase` |
 | 출고 | 재고 수량은 음수가 될 수 없음 | 도메인 규칙(`Stock.decrease`)과 DB `CHECK` 제약 | `Stock` |
-| 재고 | 현재 재고 수량 확인 | `GET /api/v1/products/{productId}/stock` | `StockQueryUseCase` |
+| 재고 | 현재 재고 수량 확인 | 입출고와 같은 식별자인 sku로 조회하는 `GET /api/v1/stocks/{sku}`, 상품 id로 조회하는 `GET /api/v1/products/{productId}/stock` | `StockQueryUseCase` |
 
 ### 추가 구현
 
@@ -99,7 +99,8 @@ Docker가 설치되어 있어야 합니다. 앱 실행과 테스트 실행은 �
 |---|---|---|---|
 | 입고 | `POST /stocks/inbound` | `{sku, name?, quantity}` | `200` 재고 응답 |
 | 출고 | `POST /stocks/outbound` | `{sku, quantity}` | `200` 재고 응답 |
-| 재고 조회 | `GET /products/{productId}/stock` | - | `200` 재고 응답 |
+| 재고 조회 (sku) | `GET /stocks/{sku}` | - | `200` 재고 응답 |
+| 재고 조회 (상품 id) | `GET /products/{productId}/stock` | - | `200` 재고 응답 |
 | 재고 현황 목록 | `GET /stocks?page=0` | sku 오름차순, 한 페이지 20개 | `200` 페이지 응답 |
 | 입출고 이력 | `GET /products/{productId}/stock/histories?page=0&size=20` | 최신순 고정, size 최대 100 | `200` 페이지 응답 |
 
@@ -269,6 +270,7 @@ com.example.inventory
 
 재고 조회는 호출 빈도가 가장 높을 것으로 보고, 데이터가 늘어나거나 요청 파라미터가 달라져도 **SQL 횟수와 읽는 행 수가 일정한 범위를 넘지 않도록** 설계했습니다.
 
+- 재고는 입고·출고에 쓰는 sku로 바로 조회할 수 있습니다. 클라이언트가 서버의 상품 id를 따로 기억하지 않아도 됩니다.
 - `stock`과 `product`를 fetch join으로 한 번에 읽어 상품 수만큼 쿼리가 늘어나는 N+1 문제를 막았습니다. 목록 조회는 목록과 건수 두 번의 SQL로 끝납니다.
 - 재고 현황 목록의 페이지 크기는 이 과제에서 임의로 20으로 정했습니다. 클라이언트가 페이지 크기와 정렬을 바꾸지 못하게 해서, 인덱스가 없는 정렬이나 지나치게 큰 페이지 요청이 DB까지 전달되지 않도록 했습니다.
 - 이력 조회는 `(stock_id, created_at DESC)` 인덱스를 타며, 페이지 크기는 최대 100으로 제한했습니다.
@@ -318,7 +320,7 @@ com.example.inventory
 | 같은 멱등 키를 붙여 1개씩 출고를 10건 동시 요청 | 10건 모두 `200`, 재고는 한 번만 줄어 99 | 통과 |
 | 다른 트랜잭션이 재고 행을 잡고 놓지 않는 동안 출고 요청 | 3초 뒤 `503 LOCK_TIMEOUT`, 재고는 그대로 | 통과 |
 
-전체 테스트는 25개입니다. 도메인 규칙 단위 테스트 4개, API 통합 테스트 16개, 동시성 테스트 4개, 앱 기동 1개입니다.
+전체 테스트는 27개입니다. 도메인 규칙 단위 테스트 4개, API 통합 테스트 18개, 동시성 테스트 4개, 앱 기동 1개입니다.
 
 ### 6.3 확장성
 

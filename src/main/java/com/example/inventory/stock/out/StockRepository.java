@@ -16,6 +16,9 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     @Query(value = "select s from Stock s join fetch s.product where s.product.id = :productId ")
     Optional<Stock> findByProductId(@Param("productId") Long productId);
 
+    @Query("select s from Stock s join fetch s.product p where p.sku = :sku")
+    Optional<Stock> findByProductSku(@Param("sku") String sku);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Stock s join fetch s.product where s.product.id = :productId")
     Optional<Stock> findByProductIdForUpdate(@Param("productId") Long productId);

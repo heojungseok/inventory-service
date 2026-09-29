@@ -27,6 +27,14 @@ public class StockQueryUseCase {
     }
 
     @Transactional(readOnly = true)
+    public StockResponse findBySku(String sku) {
+        Stock stock = stockRepository.findByProductSku(sku)
+                .orElseThrow(ProductNotFoundException::new);
+
+        return StockResponse.from(stock);
+    }
+
+    @Transactional(readOnly = true)
     public Page<StockResponse> findStocks(int page) {
         return stockRepository.findAllWithProduct(PageRequest.of(Math.max(page, 0), PAGE_SIZE))
                 .map(StockResponse::from);

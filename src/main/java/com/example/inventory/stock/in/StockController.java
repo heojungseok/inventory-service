@@ -34,6 +34,12 @@ public class StockController {
         return stockQueryUseCase.findByProductId(productId);
     }
 
+    @Operation(summary = "sku로 재고 조회", description = "입고·출고와 같은 식별자인 sku로 현재 재고를 조회한다. 상품이 없으면 404 PRODUCT_NOT_FOUND")
+    @GetMapping("/stocks/{sku}")
+    public StockResponse getStockBySku(@PathVariable String sku) {
+        return stockQueryUseCase.findBySku(sku);
+    }
+
     @Operation(summary = "재고 현황 목록", description = "sku 오름차순, 한 페이지 20개 고정. page는 0부터 시작한다")
     @GetMapping("/stocks")
     public Page<StockResponse> getStocks(@RequestParam(defaultValue = "0") int page) {

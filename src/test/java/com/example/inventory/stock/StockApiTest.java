@@ -37,6 +37,28 @@ public class StockApiTest extends IntegrationTest {
     }
 
     @Test
+    void 입출고에_쓴_sku로_재고를_조회한다() {
+        String sku = uniqueSku();
+        testRestTemplate.postForEntity(INBOUND_URL, new InboundRequest(sku, "상품 S", 12), StockResponse.class);
+
+        ResponseEntity<StockResponse> query = testRestTemplate.getForEntity("/api/v1/stocks/" + sku, StockResponse.class);
+
+        assertThat(query.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(query.getBody().getSku()).isEqualTo(sku);
+        assertThat(query.getBody().getName()).isEqualTo("상품 S");
+        assertThat(query.getBody().getQuantity()).isEqualTo(12);
+    }
+
+    @Test
+    void 없는_sku로_재고를_조회하면_404() {
+        ResponseEntity<ErrorResponse> entity = testRestTemplate.getForEntity(
+                "/api/v1/stocks/" + uniqueSku(), ErrorResponse.class);
+
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(entity.getBody().getCode()).isEqualTo("PRODUCT_NOT_FOUND");
+    }
+
+    @Test
     void 미등록_sku로_입고하면_상품이_등록되고_수량이_반영된다() {
         String sku = uniqueSku();
 
